@@ -71,7 +71,7 @@ class DenseVector {
   Info gpuToCpu(bool force_update = false);
   Info swap(DenseVector* rhs);
 
- private:
+ public:
   // Note nsize_ is understood to be the same as nvals_, so it is omitted
   Index nvals_;  // 6 ways to set: (1) Vector (2) nnew (3) dup (4) build
                  //                (5) resize (6) allocate

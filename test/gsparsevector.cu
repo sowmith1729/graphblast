@@ -1,5 +1,4 @@
 #define GRB_USE_CUDA
-#define private public
 
 #include <vector>
 #include <iostream>

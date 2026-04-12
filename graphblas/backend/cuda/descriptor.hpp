@@ -59,7 +59,7 @@ class Descriptor {
   inline float switchpoint() { return switchpoint_; }
   inline float memusage()    { return memusage_; }
 
- private:
+ public:
   Info resize(size_t target, std::string field);
   Info clear(std::string field);
 
@@ -69,7 +69,7 @@ class Descriptor {
     return device;
   }
 
- private:
+ public:
   Desc_value desc_[GrB_NDESCFIELD];
 
   // Workspace memory

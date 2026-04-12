@@ -323,23 +323,10 @@ Info cusparse_spgemm2(SparseMatrix<float>*       C,
   cusparseHandle_t handle;
   cusparseCreate(&handle);
 
-  csrgemm2Info_t info = NULL;
-  size_t bufferSize;
-
-  // nnzTotalDevHostPtr points to host memory
-  float alpha = 1.0;
-  float* beta = NULL;
-  cusparseSetPointerMode(handle, CUSPARSE_POINTER_MODE_HOST);
-
-  cusparseMatDescr_t descr;
-  cusparseCreateMatDescr(&descr);
-
-  cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL);
-  cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO);
+  float alpha = 1.0f;
+  float beta  = 0.0f;
   cusparseStatus_t status;
 
-  int baseC;
-  int *nnzTotalDevHostPtr = &(C_nvals);
   if (C->d_csrRowPtr_ == NULL) {
     CUDA_CALL(cudaMalloc(&C->d_csrRowPtr_, (A_nrows+1)*sizeof(Index)));
   }
@@ -358,20 +345,36 @@ Info cusparse_spgemm2(SparseMatrix<float>*       C,
     C.h_csrRowPtr_ = (Index*)malloc((A_nrows+1)*sizeof(Index));
   }*/
 
-  // Step 1: create an opaque structure
-  cusparseCreateCsrgemm2Info(&info);
+  // Create sparse matrix descriptors for A, B, C
+  cusparseSpMatDescr_t matA, matB, matC;
+  cusparseCreateCsr(&matA, A_nrows, A_ncols, A_nvals,
+      A->d_csrRowPtr_, A->d_csrColInd_, A->d_csrVal_,
+      CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+      CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F);
+  cusparseCreateCsr(&matB, B_nrows, B_ncols, B_nvals,
+      B->d_csrRowPtr_, B->d_csrColInd_, B->d_csrVal_,
+      CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+      CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F);
+  // Create C with 0 nnz initially; row pointers set but col/val are NULL
+  cusparseCreateCsr(&matC, A_nrows, B_ncols, 0,
+      C->d_csrRowPtr_, NULL, NULL,
+      CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+      CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F);
 
-  // Step 2: allocate buffer for csrgemm2Nnz and csrgemm2
-  status = cusparseScsrgemm2_bufferSizeExt(handle,
-      A_nrows, B_ncols, A_ncols, &alpha,
-      descr, A_nvals, A->d_csrRowPtr_, A->d_csrColInd_,
-      descr, B_nvals, B->d_csrRowPtr_, B->d_csrColInd_,
-      beta,
-      descr, B_nvals, B->d_csrRowPtr_, B->d_csrColInd_,
-      info, &bufferSize);
+  // Create SpGEMM descriptor
+  cusparseSpGEMMDescr_t spgemmDesc;
+  cusparseSpGEMM_createDescr(&spgemmDesc);
+
+  // Step 1: SpGEMM_workEstimation
+  size_t bufferSize1 = 0;
+  void*  externalBuffer1 = NULL;
+
+  status = cusparseSpGEMM_workEstimation(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+      CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB, &beta, matC,
+      CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT, spgemmDesc,
+      &bufferSize1, NULL);
   switch (status) {
     case CUSPARSE_STATUS_SUCCESS:
-      // std::cout << "SpMM successful!\n";
       break;
     case CUSPARSE_STATUS_NOT_INITIALIZED:
       std::cout << "Error: Library not initialized.\n";
@@ -395,20 +398,14 @@ Info cusparse_spgemm2(SparseMatrix<float>*       C,
       std::cout << "Error: Matrix type not supported.\n";
   }
 
-  if (bufferSize > desc->d_buffer_size_)
-    desc->resize(bufferSize, "buffer");
+  CUDA_CALL(cudaMalloc(&externalBuffer1, bufferSize1));
 
-  // Analyze
-  status = cusparseXcsrgemm2Nnz(handle,
-      A_nrows, B_ncols, A_ncols,
-      descr, A_nvals, A->d_csrRowPtr_, A->d_csrColInd_,
-      descr, B_nvals, B->d_csrRowPtr_, B->d_csrColInd_,
-      descr, B_nvals, B->d_csrRowPtr_, B->d_csrColInd_,
-      descr, C->d_csrRowPtr_, nnzTotalDevHostPtr, info, desc->d_buffer_);
-
+  status = cusparseSpGEMM_workEstimation(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+      CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB, &beta, matC,
+      CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT, spgemmDesc,
+      &bufferSize1, externalBuffer1);
   switch (status) {
     case CUSPARSE_STATUS_SUCCESS:
-      // std::cout << "SpMM successful!\n";
       break;
     case CUSPARSE_STATUS_NOT_INITIALIZED:
       std::cout << "Error: Library not initialized.\n";
@@ -432,16 +429,76 @@ Info cusparse_spgemm2(SparseMatrix<float>*       C,
       std::cout << "Error: Matrix type not supported.\n";
   }
 
-  if (nnzTotalDevHostPtr != NULL) {
-    C_nvals = *nnzTotalDevHostPtr;
-  } else {
-    CUDA_CALL(cudaMemcpy(&(C_nvals), C->d_csrRowPtr_+A_nrows, sizeof(Index),
-        cudaMemcpyDeviceToHost));
-    CUDA_CALL(cudaMemcpy(&(baseC), C->d_csrRowPtr_, sizeof(Index),
-        cudaMemcpyDeviceToHost));
-    C_nvals -= baseC;
+  // Step 2: SpGEMM_compute
+  size_t bufferSize2 = 0;
+  void*  externalBuffer2 = NULL;
+
+  status = cusparseSpGEMM_compute(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+      CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB, &beta, matC,
+      CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT, spgemmDesc,
+      &bufferSize2, NULL);
+  switch (status) {
+    case CUSPARSE_STATUS_SUCCESS:
+      break;
+    case CUSPARSE_STATUS_NOT_INITIALIZED:
+      std::cout << "Error: Library not initialized.\n";
+      break;
+    case CUSPARSE_STATUS_INVALID_VALUE:
+      std::cout << "Error: Invalid parameters m, n, or nnz.\n";
+      break;
+    case CUSPARSE_STATUS_EXECUTION_FAILED:
+      std::cout << "Error: Failed to launch GPU.\n";
+      break;
+    case CUSPARSE_STATUS_ALLOC_FAILED:
+      std::cout << "Error: Resources could not be allocated.\n";
+      break;
+    case CUSPARSE_STATUS_ARCH_MISMATCH:
+      std::cout << "Error: Device architecture does not support.\n";
+      break;
+    case CUSPARSE_STATUS_INTERNAL_ERROR:
+      std::cout << "Error: An internal operation failed.\n";
+      break;
+    case CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED:
+      std::cout << "Error: Matrix type not supported.\n";
   }
 
+  CUDA_CALL(cudaMalloc(&externalBuffer2, bufferSize2));
+
+  status = cusparseSpGEMM_compute(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+      CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB, &beta, matC,
+      CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT, spgemmDesc,
+      &bufferSize2, externalBuffer2);
+  switch (status) {
+    case CUSPARSE_STATUS_SUCCESS:
+      break;
+    case CUSPARSE_STATUS_NOT_INITIALIZED:
+      std::cout << "Error: Library not initialized.\n";
+      break;
+    case CUSPARSE_STATUS_INVALID_VALUE:
+      std::cout << "Error: Invalid parameters m, n, or nnz.\n";
+      break;
+    case CUSPARSE_STATUS_EXECUTION_FAILED:
+      std::cout << "Error: Failed to launch GPU.\n";
+      break;
+    case CUSPARSE_STATUS_ALLOC_FAILED:
+      std::cout << "Error: Resources could not be allocated.\n";
+      break;
+    case CUSPARSE_STATUS_ARCH_MISMATCH:
+      std::cout << "Error: Device architecture does not support.\n";
+      break;
+    case CUSPARSE_STATUS_INTERNAL_ERROR:
+      std::cout << "Error: An internal operation failed.\n";
+      break;
+    case CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED:
+      std::cout << "Error: Matrix type not supported.\n";
+  }
+
+  // Step 3: Get the result matrix size
+  int64_t C_num_rows, C_num_cols, C_nnz;
+  cusparseSpMatGetSize(matC, &C_num_rows, &C_num_cols, &C_nnz);
+  C_nvals = static_cast<Index>(C_nnz);
+
+  // Allocate C's column indices and values arrays
   if (C_nvals > C->ncapacity_) {
     if (desc->debug())
       std::cout << "Increasing matrix C: " << C->ncapacity_ << " -> " << C_nvals << std::endl;
@@ -457,24 +514,20 @@ Info cusparse_spgemm2(SparseMatrix<float>*       C,
       free(C->h_csrVal_);
     }
     C->h_csrColInd_ = reinterpret_cast<Index*>(malloc(C_nvals*sizeof(Index)));
-    C->h_csrVal_    = reinterpret_cast<T*>(malloc(C_nvals*sizeof(T)));
+    C->h_csrVal_    = reinterpret_cast<float*>(malloc(C_nvals*sizeof(float)));
 
     C->ncapacity_ = C_nvals;
   }
 
-  // Compute
-  status = cusparseScsrgemm2(handle,
-      A_nrows, B_ncols, A_ncols, &alpha,
-      descr, A_nvals, A->d_csrVal_, A->d_csrRowPtr_, A->d_csrColInd_,
-      descr, B_nvals, B->d_csrVal_, B->d_csrRowPtr_, B->d_csrColInd_,
-      beta,
-      descr, B_nvals, B->d_csrVal_, B->d_csrRowPtr_, B->d_csrColInd_,
-      descr,          C->d_csrVal_, C->d_csrRowPtr_, C->d_csrColInd_,
-      info,  desc->d_buffer_);
+  // Update matC with the allocated pointers
+  cusparseCsrSetPointers(matC, C->d_csrRowPtr_, C->d_csrColInd_, C->d_csrVal_);
 
+  // Step 4: Copy the result into C's arrays
+  status = cusparseSpGEMM_copy(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
+      CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB, &beta, matC,
+      CUDA_R_32F, CUSPARSE_SPGEMM_DEFAULT, spgemmDesc);
   switch (status) {
     case CUSPARSE_STATUS_SUCCESS:
-      // std::cout << "SpMM successful!\n";
       break;
     case CUSPARSE_STATUS_NOT_INITIALIZED:
       std::cout << "Error: Library not initialized.\n";
@@ -497,6 +550,15 @@ Info cusparse_spgemm2(SparseMatrix<float>*       C,
     case CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED:
       std::cout << "Error: Matrix type not supported.\n";
   }
+
+  // Cleanup SpGEMM resources
+  cusparseSpGEMM_destroyDescr(spgemmDesc);
+  cusparseDestroySpMat(matA);
+  cusparseDestroySpMat(matB);
+  cusparseDestroySpMat(matC);
+  CUDA_CALL(cudaFree(externalBuffer1));
+  CUDA_CALL(cudaFree(externalBuffer2));
+  cusparseDestroy(handle);
 
   C->need_update_ = true;  // Set flag that we need to copy data from GPU
   C->csr_initialized_ = true;

@@ -60,13 +60,13 @@ class DenseMatrix {
   template <typename U>
   Info fillAscending(Index axis, Index nvals, U start);
 
- private:
+ public:
   Info allocate();
   Info printDense() const;
   Info cpuToGpu();
   Info gpuToCpu(bool force_update = false);
 
- private:
+ public:
   Index nrows_;
   Index ncols_;
   Index nvals_;

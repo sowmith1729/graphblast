@@ -61,7 +61,7 @@ class Vector {
   Info dense2sparse(T identity, Descriptor* desc);
   Info swap(Vector* rhs);
 
- private:
+ public:
   backend::Vector<T> vector_;
 };
 

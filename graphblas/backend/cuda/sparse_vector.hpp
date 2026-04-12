@@ -71,7 +71,7 @@ class SparseVector {
   Info gpuToCpu(bool force_update = false);
   Info swap(SparseVector* rhs);
 
- private:
+ public:
   Index  nsize_;  // 5 ways to set: (1) Vector (2) nnew (3) dup (4) resize
                   //                (5) allocate
   Index  nvals_;  // 4 ways to set: (1) Vector (2) dup (3) build (4) resize

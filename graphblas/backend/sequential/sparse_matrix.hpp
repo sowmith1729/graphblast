@@ -60,7 +60,7 @@ namespace backend
     Info ncols( Index& ncols ) const;
     Info nvals( Index& nvals ) const;
 
-    private:
+ public:
     Index nrows_;
     Index ncols_;
     Index nvals_;

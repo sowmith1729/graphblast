@@ -95,7 +95,7 @@ class SparseMatrix {
   template <typename U>
   Info fillAscending(Index axis, Index nvals, U start);
 
- private:
+ public:
   Info allocateCpu();
   Info allocateGpu();
   Info allocate();  // 3 ways to allocate: (1) dup, (2) build, (3) spgemm
@@ -107,7 +107,7 @@ class SparseMatrix {
 
   Info syncCpu();   // synchronizes CSR and CSC representations
 
- private:
+ public:
   const T kcap_ratio_    = 1.2f;  // Note: nasty bug if this is set to 1.f!
   const T kresize_ratio_ = 1.2f;
 

@@ -57,7 +57,7 @@ namespace backend
     Info nvals( Index& nvals ) const; 
     Info getStorage( Storage& mat_type ) const;
 
-    private:
+ public:
     Index nrows_;
     Index ncols_;
 

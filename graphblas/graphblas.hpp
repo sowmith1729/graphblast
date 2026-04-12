@@ -1,6 +1,8 @@
 #ifndef GRAPHBLAS_GRAPHBLAS_HPP_
 #define GRAPHBLAS_GRAPHBLAS_HPP_
 
+#include <cuda/std/utility>
+
 #include "graphblas/backend.hpp"
 #include "graphblas/mmio.hpp"
 #include "graphblas/types.hpp"

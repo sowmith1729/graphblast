@@ -73,7 +73,7 @@ class Vector {
   Info dense2sparse(T identity, Descriptor* desc);
   Info swap(Vector* rhs);
 
- private:
+ public:
   Index           nsize_;
   Index           nvals_;
   SparseVector<T> sparse_;

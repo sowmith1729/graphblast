@@ -235,7 +235,7 @@ struct AdditiveMonoidFromSemiring {
     return sr.add_op(lhs, rhs);
   }
 
- private:
+ public:
   SemiringT sr;
 };
 
@@ -260,7 +260,7 @@ struct MultiplicativeMonoidFromSemiring {
     return sr.mul_op(lhs, rhs);
   }
 
- private:
+ public:
   SemiringT sr;
 };
 

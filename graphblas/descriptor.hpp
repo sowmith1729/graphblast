@@ -33,7 +33,7 @@ class Descriptor {
   Info toggle(Desc_field field);
   Info loadArgs(const po::variables_map& vm);
 
- private:
+ public:
   // Data members that are same for all backends
   backend::Descriptor descriptor_;
 };

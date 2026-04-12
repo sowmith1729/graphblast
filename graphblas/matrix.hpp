@@ -78,7 +78,7 @@ class Matrix {
                      Index nvals,
                      U     start);
 
- private:
+ public:
   // Data members that are same for all backends
   backend::Matrix<T> matrix_;
 };

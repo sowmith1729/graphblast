@@ -77,7 +77,7 @@ class Matrix {
   template <typename U>
   Info fillAscending(Index axis, Index nvals, U start);
 
- private:
+ public:
   Index nrows_;
   Index ncols_;
   Index nvals_;
