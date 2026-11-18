@@ -90,6 +90,8 @@ int main(int argc, char** argv) {
   std::vector<float> h_bfs_gpu;
   CHECK(v.extractTuples(&h_bfs_gpu, &nrows));
   VERIFY_LIST(h_bfs_cpu, h_bfs_gpu, nrows);
+  std::cout << "reached, " << std::count_if(h_bfs_gpu.begin(), h_bfs_gpu.end(),
+      [](float d) { return d > 0.f; }) << "\n";
 
   // Benchmark
   graphblas::Vector<float> y(nrows);

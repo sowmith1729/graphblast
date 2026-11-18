@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <limits>
 #include <string>
 
 #include <cstdio>
@@ -104,6 +105,8 @@ int main(int argc, char** argv) {
   std::vector<float> h_sssp_gpu;
   CHECK(v.extractTuples(&h_sssp_gpu, &nrows));
   VERIFY_LIST_FLOAT(h_sssp_cpu, h_sssp_gpu, nrows);
+  std::cout << "reached, " << std::count_if(h_sssp_gpu.begin(), h_sssp_gpu.end(),
+      [](float d) { return d < std::numeric_limits<float>::max(); }) << "\n";
 
   // Benchmark
   graphblas::Vector<float> y(nrows);
