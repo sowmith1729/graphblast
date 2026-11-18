@@ -67,8 +67,12 @@ int main(int argc, char** argv) {
 
   // Matrix A
   graphblas::Matrix<float> a(nrows, ncols);
+  CpuTimer build_timer;
+  build_timer.Start();
   CHECK(a.build(&row_indices, &col_indices, &values, nvals, GrB_NULL,
       dat_name));
+  build_timer.Stop();
+  std::cout << "build, " << build_timer.ElapsedMillis() << "\n";
   CHECK(a.nrows(&nrows));
   CHECK(a.ncols(&ncols));
   CHECK(a.nvals(&nvals));
