@@ -111,6 +111,12 @@ int main(int argc, char** argv) {
   VERIFY_LIST_FLOAT(h_sssp_cpu, h_sssp_gpu, nrows);
   std::cout << "reached, " << std::count_if(h_sssp_gpu.begin(), h_sssp_gpu.end(),
       [](float d) { return d < std::numeric_limits<float>::max(); }) << "\n";
+  {
+    double sum = 0; float mx = 0;
+    for (float d : h_sssp_gpu)
+      if (d < std::numeric_limits<float>::max()) { sum += d; if (d > mx) mx = d; }
+    std::printf("checksum, sum=%.0f max=%.0f\n", sum, mx);
+  }
 
   // Benchmark
   graphblas::Vector<float> y(nrows);
