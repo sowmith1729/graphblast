@@ -75,7 +75,7 @@ Info eWiseAddInner(DenseVector<W>*       w,
     NT.x = nt;
     NT.y = 1;
     NT.z = 1;
-    NB.x = (u_nvals + nt - 1) / nt;
+    NB.x = (u_nvals > 0) ? (u_nvals + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
     NB.y = 1;
     NB.z = 1;
 
@@ -139,7 +139,7 @@ Info eWiseAddInner(DenseVector<W>*        w,
     NT.x = nt;
     NT.y = 1;
     NT.z = 1;
-    NB.x = (v_nvals + nt - 1) / nt;
+    NB.x = (v_nvals > 0) ? (v_nvals + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
     NB.y = 1;
     NB.z = 1;
 
@@ -147,7 +147,7 @@ Info eWiseAddInner(DenseVector<W>*        w,
     eWiseAddDenseConstantKernel<<<NB, NT>>>(w->d_val_, extractAdd(op),
         op.identity(), reverse, v_nvals);
 
-    NB.x = (u_nvals + nt - 1) / nt;
+    NB.x = (u_nvals > 0) ? (u_nvals + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
     eWiseAddSparseDenseKernel<<<NB, NT>>>(w->d_val_, NULL, extractAdd(op),
         u->d_ind_, u->d_val_, v->d_val_, u_nvals);
   }
@@ -205,7 +205,7 @@ Info eWiseAddInner(DenseVector<W>*        w,
     NT.x = nt;
     NT.y = 1;
     NT.z = 1;
-    NB.x = (u_nvals + nt - 1) / nt;
+    NB.x = (u_nvals > 0) ? (u_nvals + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
     NB.y = 1;
     NB.z = 1;
 

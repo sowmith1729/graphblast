@@ -31,7 +31,7 @@ Info scatterDense(DenseVector<W>*       w,
     NT.x = nt;
     NT.y = 1;
     NT.z = 1;
-    NB.x = (u_nvals + nt - 1) / nt;
+    NB.x = (u_nvals > 0) ? (u_nvals + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
     NB.y = 1;
     NB.z = 1;
 
@@ -68,7 +68,7 @@ Info scatterSparse(DenseVector<W>*        w,
     NT.x = nt;
     NT.y = 1;
     NT.z = 1;
-    NB.x = (u_nvals + nt - 1) / nt;
+    NB.x = (u_nvals > 0) ? (u_nvals + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
     NB.y = 1;
     NB.z = 1;
 
