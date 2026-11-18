@@ -346,7 +346,7 @@ Info Vector<T>::sparse2dense(T identity, Descriptor* desc) {
     NT.x = nt;
     NT.y = 1;
     NT.z = 1;
-    NB.x = (nvals+nt-1)/nt;
+    NB.x = (nvals > 0) ? (nvals + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
     NB.y = 1;
 
     dense_.fill(identity);
@@ -381,7 +381,7 @@ Info Vector<T>::dense2sparse(T identity, Descriptor* desc) {
   NT.x = nt;
   NT.y = 1;
   NT.z = 1;
-  NB.x = (nvals+nt-1)/nt;
+  NB.x = (nvals > 0) ? (nvals + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
   NB.y = 1;
 
   desc->resize((2*nvals)*std::max(sizeof(Index), sizeof(T)), "buffer");

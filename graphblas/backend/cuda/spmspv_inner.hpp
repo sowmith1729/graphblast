@@ -87,7 +87,7 @@ Info spmspvApspieMerge(Index*       w_ind,
   NT.x = nt;
   NT.y = 1;
   NT.z = 1;
-  NB.x = (*u_nvals+nt-1)/nt;
+  NB.x = (*u_nvals > 0) ? (*u_nvals + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
   NB.y = 1;
   NB.z = 1;
 
@@ -200,7 +200,7 @@ Info spmspvApspieMerge(Index*       w_ind,
         reinterpret_cast<T*>(d_csrSwapVal), *(desc->d_context_));
 
   // Step 4) Element-wise multiplication
-    NB.x = (*w_nvals+nt-1)/nt;
+    NB.x = (*w_nvals > 0) ? (*w_nvals + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
     eWiseMultKernel<<<NB, NT>>>(reinterpret_cast<T*>(d_csrSwapVal),
         extractAdd(op), op.identity(), extractMul(op),
         reinterpret_cast<T*>(d_csrSwapVal), reinterpret_cast<T*>(d_temp),
@@ -290,7 +290,7 @@ Info spmspvApspieMerge(Index*       w_ind,
   // Step 6) Segmented Reduce By Key
   if (desc->struconly()) {
     if (!desc->sort()) {
-      NB.x = (*w_nvals+nt-1)/nt;
+      NB.x = (*w_nvals > 0) ? (*w_nvals + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
       scatter<<<NB, NT>>>(w_ind, reinterpret_cast<Index*>(d_csrSwapInd),
           (Index)1, *w_nvals);
       *w_nvals = A_nrows;

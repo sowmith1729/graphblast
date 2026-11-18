@@ -33,7 +33,7 @@ Info gatherIndexed(DenseVector<W>*  w,
     NT.x = nt;
     NT.y = 1;
     NT.z = 1;
-    NB.x = (nindices + nt - 1)/nt;
+    NB.x = (nindices > 0) ? (nindices + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
     NB.y = 1;
     NB.z = 1;
     if (d_indices == NULL) {

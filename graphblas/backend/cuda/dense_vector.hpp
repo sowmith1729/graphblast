@@ -148,7 +148,7 @@ Info DenseVector<T>::computeNnz(Index* nnz_t, T identity, Descriptor* desc) {
 	NT.x = nt;
 	NT.y = 1;
 	NT.z = 1;
-	NB.x = (nvals_+nt-1)/nt;
+	NB.x = (nvals_ > 0) ? (nvals_ + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
 	NB.y = 1;
 	NB.z = 1;
 

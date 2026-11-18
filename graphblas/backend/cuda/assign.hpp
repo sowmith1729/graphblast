@@ -55,7 +55,7 @@ Info assignDense(DenseVector<W>*  w,
     NT.x = nt;
     NT.y = 1;
     NT.z = 1;
-    NB.x = (w->nvals_+nt-1)/nt;
+    NB.x = (w->nvals_ > 0) ? (w->nvals_ + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
     NB.y = 1;
     NB.z = 1;
 
@@ -156,7 +156,7 @@ Info assignSparse(SparseVector<W>*     w,
 	NT.x = nt;
 	NT.y = 1;
 	NT.z = 1;
-	NB.x = (w_nvals+nt-1)/nt;
+	NB.x = (w_nvals > 0) ? (w_nvals + nt - 1) / nt : 1;  // CUDA rejects 0-block grids
 	NB.y = 1;
 	NB.z = 1;
 
