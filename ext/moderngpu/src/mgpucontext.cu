@@ -167,7 +167,10 @@ std::string CudaDevice::DeviceString() const {
 		exit(0);
 	}
 
-	double memBandwidth = (_prop.memoryClockRate * 1000.0) *
+	int clockRate = 0, memoryClockRate = 0;
+	cudaDeviceGetAttribute(&clockRate, cudaDevAttrClockRate, _ordinal);
+	cudaDeviceGetAttribute(&memoryClockRate, cudaDevAttrMemoryClockRate, _ordinal);
+	double memBandwidth = (memoryClockRate * 1000.0) *
 		(_prop.memoryBusWidth / 8 * 2) / 1.0e9;
 
 	std::string s = stringprintf(
@@ -176,10 +179,10 @@ std::string CudaDevice::DeviceString() const {
 		"FreeMem: %6dMB   TotalMem: %6dMB   %2d-bit pointers.\n"
 		"Mem Clock: %8.3lf Mhz x %d bits   (%5.1lf GB/s)\n"
 		"ECC %s\n\n",
-		_prop.name, _prop.clockRate / 1000.0, _ordinal,
+		_prop.name, clockRate / 1000.0, _ordinal,
 		_prop.multiProcessorCount, _prop.major, _prop.minor,
 		(int)(freeMem / (1<< 20)), (int)(totalMem / (1<< 20)), 8 * sizeof(int*),
-		_prop.memoryClockRate / 1000.0, _prop.memoryBusWidth, memBandwidth,
+		memoryClockRate / 1000.0, _prop.memoryBusWidth, memBandwidth,
 		_prop.ECCEnabled ? "Enabled" : "Disabled");
 	return s;
 }
