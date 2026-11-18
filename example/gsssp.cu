@@ -78,15 +78,18 @@ int main(int argc, char** argv) {
   CHECK(a.nvals(&nvals));
   if (debug) CHECK(a.print());
 
-  // For SSSP, do uniform random distance between 1 and 64
-  // Set seed
-  setEnv("GRB_SEED", seed);
-  setEnv("GRB_UNIFORM_START", 1);
-  setEnv("GRB_UNIFORM_END", 64);
-  desc.set(GrB_BACKEND, GrB_SEQUENTIAL);
-  graphblas::apply<float, float, float>(&a, GrB_NULL, GrB_NULL, set_uniform_random<float>(), &a, &desc);
-  desc.set(GrB_BACKEND, GrB_CUDA);
-  if (debug) CHECK(a.print());
+  // Upstream benchmarks SSSP on uniform random weights in [1, 64], replacing
+  // the file's weights. Opt-in here (GRB_SSSP_RANDOM_WEIGHTS=1) so the default
+  // solves the input graph as given.
+  if (getEnv("GRB_SSSP_RANDOM_WEIGHTS", false)) {
+    setEnv("GRB_SEED", seed);
+    setEnv("GRB_UNIFORM_START", 1);
+    setEnv("GRB_UNIFORM_END", 64);
+    desc.set(GrB_BACKEND, GrB_SEQUENTIAL);
+    graphblas::apply<float, float, float>(&a, GrB_NULL, GrB_NULL, set_uniform_random<float>(), &a, &desc);
+    desc.set(GrB_BACKEND, GrB_CUDA);
+    if (debug) CHECK(a.print());
+  }
 
   // Vector v
   graphblas::Vector<float> v(nrows);
