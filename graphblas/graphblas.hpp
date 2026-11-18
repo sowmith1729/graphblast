@@ -2,6 +2,7 @@
 #define GRAPHBLAS_GRAPHBLAS_HPP_
 
 #include <cuda/std/utility>
+#include <cub/cub.cuh>  // before GraphBLAS ops named first/second, which CUB parses as templates
 
 #include "graphblas/backend.hpp"
 #include "graphblas/mmio.hpp"
