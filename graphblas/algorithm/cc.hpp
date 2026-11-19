@@ -22,7 +22,10 @@ float cc(Vector<int>*       v,
   CHECK(A->nrows(&A_nrows));
 
   // Difference vector.
-  Vector<bool> diff(A_nrows);
+  // int, not bool: the dense eWiseMult kernel treats an input equal to the
+  // semiring identity as absent. With a bool output that identity is `true`,
+  // i.e. label 1, so label-1 vertices were flagged changed forever.
+  Vector<int> diff(A_nrows);
 
   // Parent vector.
   // f in Zhang paper.
@@ -99,10 +102,10 @@ float cc(Vector<int>*       v,
         &parent, &parent, desc);
 
     // 5) Check termination.
-    eWiseMult<bool, bool, int, int>(&diff, GrB_NULL, GrB_NULL,
-        MinimumNotEqualToSemiring<int, int, bool>(), &grandparent_temp,
+    eWiseMult<int, bool, int, int>(&diff, GrB_NULL, GrB_NULL,
+        MinimumNotEqualToSemiring<int, int, int>(), &grandparent_temp,
         &grandparent, desc);
-    reduce<int, bool>(&succ, GrB_NULL, PlusMonoid<int>(), &diff, desc);
+    reduce<int, int>(&succ, GrB_NULL, PlusMonoid<int>(), &diff, desc);
     if (succ == 0) {
       break;
     }
@@ -111,7 +114,7 @@ float cc(Vector<int>*       v,
     // 6) Similar to BFS and SSSP, we should filter out the unproductive
     // vertices from the next iteration.
     CHECK(desc->toggle(GrB_MASK));
-    assign<int, bool, int, int>(&grandparent, &diff, GrB_NULL,
+    assign<int, int, int, int>(&grandparent, &diff, GrB_NULL,
         std::numeric_limits<int>::max(), GrB_ALL, A_nrows, desc);
     CHECK(desc->toggle(GrB_MASK));
 
