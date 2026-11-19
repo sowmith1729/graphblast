@@ -66,8 +66,12 @@ int main(int argc, char** argv) {
   graphblas::Matrix<int> A(nrows, ncols);
   values.clear();
   values.resize(nvals, 1.f);
+  CpuTimer build_timer;
+  build_timer.Start();
   CHECK(A.build(&row_indices, &col_indices, &values, nvals, GrB_NULL,
       dat_name));
+  build_timer.Stop();
+  std::cout << "build, " << build_timer.ElapsedMillis() << "\n";
   CHECK(A.nrows(&nrows));
   CHECK(A.ncols(&ncols));
   CHECK(A.nvals(&nvals));
@@ -81,9 +85,12 @@ int main(int argc, char** argv) {
   std::vector<int> h_cc_cpu(nrows, 0);
   int depth = 10000;
   cc_cpu.Start();
-  int d = graphblas::algorithm::ccCpu(seed, &A, &h_cc_cpu);
+  const bool skip_cpu = getenv("GRB_SKIP_CPU") != nullptr;
+  if (!skip_cpu) {
+    graphblas::algorithm::ccCpu(seed, &A, &h_cc_cpu);
+    graphblas::algorithm::verifyCc(&A, h_cc_cpu, /*suppress_zero=*/true);
+  }
   cc_cpu.Stop();
-  graphblas::algorithm::verifyCc(&A, h_cc_cpu, /*suppress_zero=*/true);
 
   // Warmup
   CpuTimer warmup;
@@ -103,7 +110,19 @@ int main(int argc, char** argv) {
 
   std::vector<int> h_cc_gpu;
   CHECK(v.extractTuples(&h_cc_gpu, &nrows));
-  graphblas::algorithm::verifyCc(&A, h_cc_gpu, /*suppress_zero=*/true);
+  if (!skip_cpu)
+    graphblas::algorithm::verifyCc(&A, h_cc_gpu, /*suppress_zero=*/true);
+  {
+    // Components over vertices with at least one edge (isolated ids excluded).
+    const Index* rp = A.matrix_.sparse_.h_csrRowPtr_;
+    std::vector<int> labels;
+    for (Index i = 0; i < nrows; i++)
+      if (rp[i + 1] > rp[i]) labels.push_back(h_cc_gpu[i]);
+    std::sort(labels.begin(), labels.end());
+    std::cout << "components, "
+        << (std::unique(labels.begin(), labels.end()) - labels.begin())
+        << " vertices, " << labels.size() << "\n";
+  }
 
   // Benchmark
   graphblas::Vector<int> y(nrows);
@@ -138,7 +157,7 @@ int main(int argc, char** argv) {
   std::cout << "tight, " << tight/niter << "\n";
   std::cout << "vxm, " << elapsed_vxm/niter << "\n";
 
-  if (niter) {
+  if (niter && !skip_cpu) {
     std::vector<int> h_cc_gpu2;
     graphblas::algorithm::verifyCc(&A, h_cc_gpu, /*suppress_zero=*/true);
   }

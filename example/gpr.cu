@@ -64,14 +64,20 @@ int main(int argc, char** argv) {
 
   // PageRank Parameters
   float alpha = 0.85;
-  float eps   = 1e-8;
+  // GRB_PR_EPS overrides the convergence threshold; a negative value runs
+  // exactly --max_niter iterations (fixed-iteration PageRank, as in LDBC).
+  float eps   = getenv("GRB_PR_EPS") ? atof(getenv("GRB_PR_EPS")) : 1e-8;
 
   // Matrix A
   graphblas::Matrix<float> a(nrows, ncols);
   values.clear();
   values.insert(values.begin(), nvals, 1.f);
+  CpuTimer build_timer;
+  build_timer.Start();
   CHECK(a.build(&row_indices, &col_indices, &values, nvals, GrB_NULL,
       dat_name));
+  build_timer.Stop();
+  std::cout << "build, " << build_timer.ElapsedMillis() << "\n";
   CHECK(a.nrows(&nrows));
   CHECK(a.ncols(&ncols));
   CHECK(a.nvals(&nvals));
@@ -145,6 +151,9 @@ int main(int argc, char** argv) {
     std::vector<float> h_pr_gpu2;
     CHECK(y.extractTuples(&h_pr_gpu2, &nrows));
     VERIFY_LIST_FLOAT(h_pr_cpu, h_pr_gpu2, nrows);
+    double sum = 0; float mx = 0;
+    for (float x : h_pr_gpu2) { sum += x; mx = std::max(mx, x); }
+    std::cout << "checksum, sum=" << sum << " max=" << mx << "\n";
   }
 
   return 0;
